@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import secrets
 import time
 from datetime import date
 from typing import Any
@@ -77,6 +78,7 @@ class ArborApiClient:
         params = {
             "client_id": OAUTH_CLIENT_ID,
             "response_type": "code",
+            "state": secrets.token_hex(32),
         }
         payload = {"username": username, "password": password}
 
