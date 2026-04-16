@@ -370,9 +370,11 @@ class ArborApiClient:
                 continue
 
             if "Attendance" in title:
-                result["attendance_year"] = kpi_data.get("measureRawValue")
-                result["attendance_last_4_weeks"] = kpi_data.get(
-                    "comparisonRawValue"
+                result["attendance_year"] = self._round_attendance(
+                    kpi_data.get("measureRawValue")
+                )
+                result["attendance_last_4_weeks"] = self._round_attendance(
+                    kpi_data.get("comparisonRawValue")
                 )
 
             elif "Positive" in title:
@@ -397,6 +399,19 @@ class ArborApiClient:
                 result["negative_year"] = year_total
 
         return result
+
+    @staticmethod
+    def _round_attendance(value: Any) -> float | int | None:
+        """Round an attendance percentage to 2 dp, returning int when whole."""
+        if value is None:
+            return None
+        try:
+            rounded = round(float(value), 2)
+        except (TypeError, ValueError):
+            return None
+        if rounded == int(rounded):
+            return int(rounded)
+        return rounded
 
     @staticmethod
     def _extract_year_total(label: str) -> int | None:
