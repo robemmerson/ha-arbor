@@ -22,7 +22,7 @@ from .coordinator import ArborDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
 
 
 async def async_setup_entry(

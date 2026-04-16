@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .api import ArborApiError
 from .const import DATA_CALENDAR, DOMAIN
@@ -87,7 +88,7 @@ class ArborCalendarEntity(
         if not lessons:
             return None
 
-        now = datetime.now()
+        now = dt_util.now()
 
         for lesson in lessons:
             start = self._parse_datetime(lesson.get("start", ""))
@@ -148,10 +149,13 @@ class ArborCalendarEntity(
 
     @staticmethod
     def _parse_datetime(dt_str: str) -> datetime | None:
-        """Parse a datetime string from the API."""
+        """Parse a datetime string from the API as local school time."""
         if not dt_str:
             return None
         try:
-            return datetime.fromisoformat(dt_str)
+            parsed = datetime.fromisoformat(dt_str)
         except ValueError:
             return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+        return parsed
