@@ -2,7 +2,8 @@
 
 Run from the repo root:
 
-    python -m scripts.test_api
+    source .venv/bin/activate
+    python3 -m scripts.test_api
 
 Credentials can be supplied via environment variables or interactively:
 
