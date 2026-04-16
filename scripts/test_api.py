@@ -109,6 +109,22 @@ async def _run() -> int:
         await client.ensure_valid_token()
         print("  refresh OK, new token acquired")
 
+        # Use the first student for the recovery scenarios.
+        sid = targets[0]["student_id"]
+
+        _section("Recovery: invalid access token (should use refresh)")
+        # Leave the clock expiry alone so ensure_valid_token() doesn't
+        # proactively refresh — we want _get() to hit a 401/403 and recover.
+        client.access_token = "deadbeef_invalid_access_token"
+        kpis = await client.get_kpis(sid)
+        print(f"  recovered via refresh, KPIs returned {len(kpis)} keys")
+
+        _section("Recovery: invalid access + refresh (should full re-auth)")
+        client.access_token = "deadbeef_invalid_access_token"
+        client.refresh_token = "deadbeef_invalid_refresh_token"
+        kpis = await client.get_kpis(sid)
+        print(f"  recovered via full re-auth, KPIs returned {len(kpis)} keys")
+
     print("\nAll calls completed successfully.")
     return 0
 

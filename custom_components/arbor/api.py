@@ -40,6 +40,8 @@ class ArborApiClient:
         access_token: str | None = None,
         refresh_token: str | None = None,
         token_expiry: float | None = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
         """Initialise the API client."""
         self._session = session
@@ -47,6 +49,11 @@ class ArborApiClient:
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.token_expiry = token_expiry or 0.0
+        # Credentials are stashed so the client can self-recover when the
+        # server invalidates the session (e.g. the parent logged in on
+        # another device). Without them we can only try the refresh token.
+        self._username = username
+        self._password = password
 
     @property
     def _school_base_url(self) -> str:
@@ -73,6 +80,11 @@ class ArborApiClient:
 
         Returns dict with school info and tokens.
         """
+        # Stash credentials so subsequent 401/403 responses can trigger a
+        # full re-authentication without the caller having to orchestrate it.
+        self._username = username
+        self._password = password
+
         # Step 1: Authorize — get authorization code
         authorize_url = f"{AUTH_BASE_URL}{AUTH_AUTHORIZE_PATH}"
         params = {
@@ -173,40 +185,85 @@ class ArborApiClient:
         self.refresh_token = data["refresh_token"]
         self.token_expiry = time.time() + data.get("expires_in", 3600)
 
+    async def _refresh_or_reauth(self) -> None:
+        """Obtain fresh tokens: try the refresh token first, then full auth.
+
+        Raises ArborAuthError if neither path can succeed (no refresh token
+        *and* no stored credentials, or both paths fail).
+        """
+        if self.refresh_token:
+            try:
+                await self._exchange_refresh_token(self.refresh_token)
+                return
+            except ArborAuthError as err:
+                _LOGGER.info(
+                    "Refresh token exchange failed (%s); "
+                    "attempting full re-authentication",
+                    err,
+                )
+
+        if self._username and self._password:
+            await self.authenticate(self._username, self._password)
+            return
+
+        raise ArborAuthError(
+            "Cannot obtain a new access token: no valid refresh token and "
+            "no stored credentials for re-authentication"
+        )
+
     async def ensure_valid_token(self) -> None:
-        """Ensure we have a valid, non-expired access token."""
+        """Ensure we have a valid, non-expired access token (by clock)."""
         if self._is_token_expired():
-            if not self.refresh_token:
-                raise ArborAuthError("No refresh token available")
-            _LOGGER.debug("Access token expired, refreshing")
-            await self._exchange_refresh_token(self.refresh_token)
+            _LOGGER.debug("Access token near/past expiry, renewing")
+            await self._refresh_or_reauth()
 
     async def _get(self, path: str) -> Any:
-        """Make an authenticated GET request to the school API."""
+        """Make an authenticated GET request to the school API.
+
+        Arbor returns 401 when the bearer token is missing/malformed and 403
+        (with body "User is not allowed to access …") once a token has been
+        invalidated server-side — most commonly when the same guardian logs
+        in on another device. Both are treated as recoverable here: we try
+        refresh → full re-auth → retry once.
+        """
         await self.ensure_valid_token()
         url = f"{self._school_base_url}{path}"
 
+        auth_error_status: int | None = None
         async with self._session.get(
             url, headers=self._auth_headers
         ) as resp:
-            if resp.status == 401:
-                # Token may have been invalidated, try one refresh
-                await self._exchange_refresh_token(self.refresh_token)
-                async with self._session.get(
-                    url, headers=self._auth_headers
-                ) as retry_resp:
-                    if retry_resp.status != 200:
-                        text = await retry_resp.text()
-                        raise ArborApiError(
-                            f"API request failed (HTTP {retry_resp.status}): {text}"
-                        )
-                    return await retry_resp.json(content_type=None)
-            if resp.status != 200:
+            if resp.status == 200:
+                return await resp.json(content_type=None)
+            if resp.status in (401, 403):
+                auth_error_status = resp.status
+                # Drain body for the debug log; don't hold the connection
+                # open while we re-authenticate.
+                body_preview = (await resp.text())[:200]
+            else:
                 text = await resp.text()
                 raise ArborApiError(
                     f"API request failed (HTTP {resp.status}): {text}"
                 )
-            return await resp.json(content_type=None)
+
+        _LOGGER.debug(
+            "Auth error (HTTP %s) on %s, recovering: %s",
+            auth_error_status,
+            path,
+            body_preview,
+        )
+        await self._refresh_or_reauth()
+
+        async with self._session.get(
+            url, headers=self._auth_headers
+        ) as retry_resp:
+            if retry_resp.status != 200:
+                text = await retry_resp.text()
+                raise ArborApiError(
+                    f"API request failed after re-authentication "
+                    f"(HTTP {retry_resp.status}): {text}"
+                )
+            return await retry_resp.json(content_type=None)
 
     # ── Discovery ─────────────────────────────────────────────
 

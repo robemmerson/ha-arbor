@@ -37,26 +37,20 @@ async def async_setup_entry(
         access_token=entry.data.get(CONF_ACCESS_TOKEN),
         refresh_token=entry.data.get(CONF_REFRESH_TOKEN),
         token_expiry=entry.data.get(CONF_TOKEN_EXPIRY, 0),
+        username=entry.data[CONF_USERNAME],
+        password=entry.data[CONF_PASSWORD],
     )
 
-    # Ensure we have a valid token — if the stored one is stale,
-    # try refreshing; if that fails, re-authenticate from scratch.
+    # ensure_valid_token() now falls back to full re-authentication using
+    # the stashed credentials if the refresh token has been invalidated.
+    # If even that fails, the credentials themselves are bad and the user
+    # must re-enter them via the reauth UI.
     try:
         await client.ensure_valid_token()
-    except ArborAuthError:
-        _LOGGER.info(
-            "Stored tokens expired, attempting full re-authentication"
-        )
-        try:
-            await client.authenticate(
-                entry.data[CONF_USERNAME],
-                entry.data[CONF_PASSWORD],
-            )
-        except ArborAuthError as err:
-            _LOGGER.error("Re-authentication failed: %s", err)
-            # Trigger re-auth flow in the UI
-            entry.async_start_reauth(hass)
-            return False
+    except ArborAuthError as err:
+        _LOGGER.error("Re-authentication failed: %s", err)
+        entry.async_start_reauth(hass)
+        return False
 
     coordinator = ArborDataUpdateCoordinator(hass, client, entry)
 

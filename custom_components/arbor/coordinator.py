@@ -8,10 +8,8 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import ArborApiClient, ArborApiError, ArborAuthError
 from .const import (
@@ -68,9 +66,19 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch all data for all students."""
         try:
-            await self.client.ensure_valid_token()
+            return await self._fetch_all_students()
         except ArborAuthError as err:
-            raise UpdateFailed(f"Authentication failed: {err}") from err
+            # Re-auth was attempted (refresh + full authenticate) and still
+            # failed — the stored credentials are no longer valid. Surface
+            # this as ConfigEntryAuthFailed so HA prompts the user to
+            # re-enter credentials via the reauth flow.
+            raise ConfigEntryAuthFailed(
+                f"Authentication failed: {err}"
+            ) from err
+
+    async def _fetch_all_students(self) -> dict[str, Any]:
+        """Fetch all per-student data; let ArborAuthError propagate."""
+        await self.client.ensure_valid_token()
 
         # Persist updated tokens back to config entry
         self._persist_tokens()
@@ -84,6 +92,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 # KPIs (attendance + behaviour)
                 student_data[DATA_KPIS] = await self.client.get_kpis(sid)
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning("Failed to fetch KPIs for %s: %s", sid, err)
                 student_data[DATA_KPIS] = {}
@@ -95,6 +105,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sid, self._academic_year_id
                     )
                 )
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning(
                     "Failed to fetch assignment counts for %s: %s", sid, err
@@ -108,6 +120,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sid, self._academic_year_id
                     )
                 )
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning(
                     "Failed to fetch assignments due for %s: %s", sid, err
@@ -120,6 +134,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sid, self._academic_year_id
                     )
                 )
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning(
                     "Failed to fetch overdue assignments for %s: %s", sid, err
@@ -132,6 +148,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sid, self._academic_year_id
                     )
                 )
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning(
                     "Failed to fetch submitted assignments for %s: %s",
@@ -145,6 +163,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 student_data[DATA_CALENDAR] = await self.client.get_calendar(
                     sid, date.today()
                 )
+            except ArborAuthError:
+                raise
             except ArborApiError as err:
                 _LOGGER.warning(
                     "Failed to fetch calendar for %s: %s", sid, err
@@ -153,7 +173,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             all_data[sid] = student_data
 
-        # Persist tokens after all requests (refresh token may have rotated)
+        # Persist tokens after all requests (refresh token may have rotated
+        # as a side-effect of a mid-poll re-auth inside ArborApiClient._get).
         self._persist_tokens()
 
         return all_data
