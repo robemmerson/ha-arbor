@@ -249,6 +249,8 @@ class ArborKpiSensor(ArborBaseSensor):
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class
+        if key.startswith("attendance_"):
+            self._attr_suggested_display_precision = 2
 
     @property
     def native_value(self) -> float | int | None:
