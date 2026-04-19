@@ -13,8 +13,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import ArborApiClient, ArborApiError, ArborAuthError
 from .const import (
-    CONF_ACCESS_TOKEN,
     CONF_ACADEMIC_YEAR_ID,
+    CONF_ACCESS_TOKEN,
     CONF_REFRESH_TOKEN,
     CONF_STUDENTS,
     CONF_TOKEN_EXPIRY,
@@ -51,12 +51,8 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             config_entry=config_entry,
         )
         self.client = client
-        self._students: list[dict[str, Any]] = config_entry.data.get(
-            CONF_STUDENTS, []
-        )
-        self._academic_year_id: str = config_entry.data.get(
-            CONF_ACADEMIC_YEAR_ID, "24"
-        )
+        self._students: list[dict[str, Any]] = config_entry.data.get(CONF_STUDENTS, [])
+        self._academic_year_id: str = config_entry.data.get(CONF_ACADEMIC_YEAR_ID, "24")
 
     @property
     def students(self) -> list[dict[str, Any]]:
@@ -72,9 +68,7 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # failed — the stored credentials are no longer valid. Surface
             # this as ConfigEntryAuthFailed so HA prompts the user to
             # re-enter credentials via the reauth flow.
-            raise ConfigEntryAuthFailed(
-                f"Authentication failed: {err}"
-            ) from err
+            raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
 
     async def _fetch_all_students(self) -> dict[str, Any]:
         """Fetch all per-student data; let ArborAuthError propagate."""
@@ -100,11 +94,9 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             try:
                 # Assignment counts
-                student_data[DATA_ASSIGNMENT_COUNTS] = (
-                    await self.client.get_assignment_counts(
-                        sid, self._academic_year_id
-                    )
-                )
+                student_data[
+                    DATA_ASSIGNMENT_COUNTS
+                ] = await self.client.get_assignment_counts(sid, self._academic_year_id)
             except ArborAuthError:
                 raise
             except ArborApiError as err:
@@ -115,24 +107,20 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             try:
                 # Assignment lists
-                student_data[DATA_ASSIGNMENTS_DUE] = (
-                    await self.client.get_assignments_due(
-                        sid, self._academic_year_id
-                    )
-                )
+                student_data[
+                    DATA_ASSIGNMENTS_DUE
+                ] = await self.client.get_assignments_due(sid, self._academic_year_id)
             except ArborAuthError:
                 raise
             except ArborApiError as err:
-                _LOGGER.warning(
-                    "Failed to fetch assignments due for %s: %s", sid, err
-                )
+                _LOGGER.warning("Failed to fetch assignments due for %s: %s", sid, err)
                 student_data[DATA_ASSIGNMENTS_DUE] = []
 
             try:
-                student_data[DATA_ASSIGNMENTS_OVERDUE] = (
-                    await self.client.get_assignments_overdue(
-                        sid, self._academic_year_id
-                    )
+                student_data[
+                    DATA_ASSIGNMENTS_OVERDUE
+                ] = await self.client.get_assignments_overdue(
+                    sid, self._academic_year_id
                 )
             except ArborAuthError:
                 raise
@@ -143,10 +131,10 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 student_data[DATA_ASSIGNMENTS_OVERDUE] = []
 
             try:
-                student_data[DATA_ASSIGNMENTS_SUBMITTED] = (
-                    await self.client.get_assignments_submitted(
-                        sid, self._academic_year_id
-                    )
+                student_data[
+                    DATA_ASSIGNMENTS_SUBMITTED
+                ] = await self.client.get_assignments_submitted(
+                    sid, self._academic_year_id
                 )
             except ArborAuthError:
                 raise
@@ -166,9 +154,7 @@ class ArborDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except ArborAuthError:
                 raise
             except ArborApiError as err:
-                _LOGGER.warning(
-                    "Failed to fetch calendar for %s: %s", sid, err
-                )
+                _LOGGER.warning("Failed to fetch calendar for %s: %s", sid, err)
                 student_data[DATA_CALENDAR] = []
 
             all_data[sid] = student_data

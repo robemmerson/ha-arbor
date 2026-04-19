@@ -32,9 +32,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Arbor todo entities from a config entry."""
-    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities: list[TodoListEntity] = [
         ArborAssignmentsTodoList(
@@ -76,9 +74,7 @@ class ArborAssignmentsTodoList(
             "name": f"Arbor - {student_name}",
             "manufacturer": "Arbor Education",
             "model": "Parent Portal",
-            "configuration_url": (
-                f"https://{coordinator.client.school_domain}"
-            ),
+            "configuration_url": (f"https://{coordinator.client.school_domain}"),
         }
 
     @property
@@ -107,9 +103,7 @@ class ArborAssignmentsTodoList(
 
         return items
 
-    def _to_todo_item(
-        self, assignment: dict[str, Any], bucket: str
-    ) -> TodoItem:
+    def _to_todo_item(self, assignment: dict[str, Any], bucket: str) -> TodoItem:
         """Convert an assignment dict to a TodoItem."""
         title = assignment.get("title", "")
         due_raw = assignment.get("due_date", "")
