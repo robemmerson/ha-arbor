@@ -1,12 +1,16 @@
 {
   "domain": "arbor",
   "name": "Arbor School",
-  "codeowners": ["@robemmerson"],
+  "codeowners": [
+    "@robemmerson"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/robemmerson/ha-arbor",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/robemmerson/ha-arbor/issues",
-  "requirements": ["aiohttp>=3.8.0"],
-  "version": "1.5.0"
+  "requirements": [
+    "aiohttp>=3.8.0"
+  ],
+  "version": "1.6.0"
 }
