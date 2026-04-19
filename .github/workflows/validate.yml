@@ -37,6 +37,9 @@ jobs:
         uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main (2026-04-19)
         with:
           category: integration
-          # Skip the brands check until the integration is added to the
-          # home-assistant/brands repo (tracked as a follow-up).
+          # Brand icons ship locally under custom_components/arbor/brand/ via
+          # the HA 2026.3 bundled-brands mechanism
+          # (https://developers.home-assistant.io/blog/2026/02/24/brands-proxy-api/).
+          # home-assistant/brands no longer accepts PRs for custom integrations,
+          # so the HACS CDN-backed brands check cannot pass; keep it ignored.
           ignore: brands
