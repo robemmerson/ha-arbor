@@ -37,3 +37,6 @@ jobs:
         uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main (2026-04-19)
         with:
           category: integration
+          # Skip the brands check until the integration is added to the
+          # home-assistant/brands repo (tracked as a follow-up).
+          ignore: brands
