@@ -52,7 +52,9 @@ async def _run() -> int:
         auth = await client.authenticate(username, password)
         print(f"School:  {auth['school_name']}")
         print(f"Domain:  {auth['school_domain']}")
-        print(f"Token expires in ~{int(auth['token_expiry'] - __import__('time').time())}s")
+        print(
+            f"Token expires in ~{int(auth['token_expiry'] - __import__('time').time())}s"
+        )
 
         _section("Dashboard → students")
         dashboard = await client.get_dashboard()
@@ -63,9 +65,7 @@ async def _run() -> int:
         for i, s in enumerate(students):
             print(f"  [{i}] {s['name']}  (id={s['student_id']})")
 
-        targets = (
-            [students[only_index]] if only_index is not None else students
-        )
+        targets = [students[only_index]] if only_index is not None else students
 
         for s in targets:
             sid = s["student_id"]
@@ -98,10 +98,10 @@ async def _run() -> int:
                 lessons = await client.get_calendar(sid, for_date=date.today())
                 if not lessons:
                     print("  (no lessons)")
-                for l in lessons:
+                for lesson in lessons:
                     print(
-                        f"  {l['start']} – {l['end']}  "
-                        f"{l['subject']}  @ {l['location']}"
+                        f"  {lesson['start']} - {lesson['end']}  "
+                        f"{lesson['subject']}  @ {lesson['location']}"
                     )
 
         _section("Token refresh round-trip")

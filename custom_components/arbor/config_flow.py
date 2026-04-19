@@ -7,15 +7,14 @@ from typing import Any
 
 import aiohttp
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import ArborApiClient, ArborAuthError
 from .const import (
-    CONF_ACCESS_TOKEN,
     CONF_ACADEMIC_YEAR_ID,
+    CONF_ACCESS_TOKEN,
     CONF_REFRESH_TOKEN,
     CONF_SCHOOL_DOMAIN,
     CONF_SCHOOL_NAME,
@@ -78,10 +77,8 @@ class ArborConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     # Discover academic year ID
                     try:
-                        academic_year_id = (
-                            await client.discover_academic_year_id(
-                                students[0]["student_id"]
-                            )
+                        academic_year_id = await client.discover_academic_year_id(
+                            students[0]["student_id"]
                         )
                     except Exception:
                         _LOGGER.warning(
@@ -96,16 +93,12 @@ class ArborConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_configured()
 
                     return self.async_create_entry(
-                        title=auth_result.get(
-                            "school_name", "Arbor School"
-                        ),
+                        title=auth_result.get("school_name", "Arbor School"),
                         data={
                             CONF_USERNAME: user_input[CONF_USERNAME],
                             CONF_PASSWORD: user_input[CONF_PASSWORD],
                             CONF_SCHOOL_DOMAIN: auth_result["school_domain"],
-                            CONF_SCHOOL_NAME: auth_result.get(
-                                "school_name", ""
-                            ),
+                            CONF_SCHOOL_NAME: auth_result.get("school_name", ""),
                             CONF_REFRESH_TOKEN: auth_result["refresh_token"],
                             CONF_ACCESS_TOKEN: auth_result["access_token"],
                             CONF_TOKEN_EXPIRY: auth_result["token_expiry"],
@@ -120,8 +113,6 @@ class ArborConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle re-authentication when tokens expire permanently."""
         return await self.async_step_user()

@@ -41,9 +41,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Arbor sensors from a config entry."""
-    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     school_name = config_entry.data.get(CONF_SCHOOL_NAME, "School")
 
     entities: list[SensorEntity] = []
@@ -152,7 +150,11 @@ async def async_setup_entry(
         # ── Assignment list sensors ──
         for list_data_key, list_label, icon in [
             (DATA_ASSIGNMENTS_DUE, "Assignments Due List", "mdi:clipboard-text-clock"),
-            (DATA_ASSIGNMENTS_OVERDUE, "Assignments Overdue List", "mdi:clipboard-alert"),
+            (
+                DATA_ASSIGNMENTS_OVERDUE,
+                "Assignments Overdue List",
+                "mdi:clipboard-alert",
+            ),
             (
                 DATA_ASSIGNMENTS_SUBMITTED,
                 "Assignments Submitted List",
@@ -239,9 +241,7 @@ class ArborKpiSensor(ArborBaseSensor):
         school_name: str,
     ) -> None:
         """Initialise the KPI sensor."""
-        super().__init__(
-            coordinator, student_id, student_name, slug, school_name
-        )
+        super().__init__(coordinator, student_id, student_name, slug, school_name)
         self._key = key
         self._attr_unique_id = f"arbor_{student_id}_{key}"
         self._attr_name = friendly_name
@@ -275,9 +275,7 @@ class ArborAssignmentCountSensor(ArborBaseSensor):
         school_name: str,
     ) -> None:
         """Initialise the assignment count sensor."""
-        super().__init__(
-            coordinator, student_id, student_name, slug, school_name
-        )
+        super().__init__(coordinator, student_id, student_name, slug, school_name)
         self._count_key = count_key
         self._attr_unique_id = f"arbor_{student_id}_assignments_{count_key}_count"
         self._attr_name = friendly_name
@@ -310,9 +308,7 @@ class ArborAssignmentListSensor(ArborBaseSensor):
         school_name: str,
     ) -> None:
         """Initialise the assignment list sensor."""
-        super().__init__(
-            coordinator, student_id, student_name, slug, school_name
-        )
+        super().__init__(coordinator, student_id, student_name, slug, school_name)
         self._data_key = data_key
         # Create unique ID from data key
         short_key = data_key.replace("assignments_", "")
@@ -355,9 +351,7 @@ class ArborTimetableSensor(ArborBaseSensor):
     ) -> None:
         """Initialise the timetable sensor."""
         first_name = student_name.split()[0] if student_name else student_name
-        super().__init__(
-            coordinator, student_id, student_name, slug, school_name
-        )
+        super().__init__(coordinator, student_id, student_name, slug, school_name)
         self._attr_unique_id = f"arbor_{student_id}_timetable"
         self._attr_name = f"{first_name} Timetable"
         self._attr_icon = "mdi:calendar-clock"

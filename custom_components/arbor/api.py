@@ -73,9 +73,7 @@ class ArborApiClient:
         # Refresh 5 minutes before actual expiry
         return time.time() >= (self.token_expiry - 300)
 
-    async def authenticate(
-        self, username: str, password: str
-    ) -> dict[str, Any]:
+    async def authenticate(self, username: str, password: str) -> dict[str, Any]:
         """Run the full 3-step OAuth flow.
 
         Returns dict with school info and tokens.
@@ -138,9 +136,7 @@ class ArborApiClient:
         if not schools or not tokens:
             raise ArborAuthError("No schools found for this account")
 
-        _LOGGER.debug(
-            "Step 2 complete: found %d school(s)", len(schools)
-        )
+        _LOGGER.debug("Step 2 complete: found %d school(s)", len(schools))
 
         # Step 3: Get access token from school domain
         # Use the first school (most accounts have one)
@@ -230,9 +226,7 @@ class ArborApiClient:
         url = f"{self._school_base_url}{path}"
 
         auth_error_status: int | None = None
-        async with self._session.get(
-            url, headers=self._auth_headers
-        ) as resp:
+        async with self._session.get(url, headers=self._auth_headers) as resp:
             if resp.status == 200:
                 return await resp.json(content_type=None)
             if resp.status in (401, 403):
@@ -242,9 +236,7 @@ class ArborApiClient:
                 body_preview = (await resp.text())[:200]
             else:
                 text = await resp.text()
-                raise ArborApiError(
-                    f"API request failed (HTTP {resp.status}): {text}"
-                )
+                raise ArborApiError(f"API request failed (HTTP {resp.status}): {text}")
 
         _LOGGER.debug(
             "Auth error (HTTP %s) on %s, recovering: %s",
@@ -254,9 +246,7 @@ class ArborApiClient:
         )
         await self._refresh_or_reauth()
 
-        async with self._session.get(
-            url, headers=self._auth_headers
-        ) as retry_resp:
+        async with self._session.get(url, headers=self._auth_headers) as retry_resp:
             if retry_resp.status != 200:
                 text = await retry_resp.text()
                 raise ArborApiError(
@@ -304,9 +294,7 @@ class ArborApiClient:
                 # Clean name: remove brackets
                 name = label.strip("[] ")
                 if name:
-                    results.append(
-                        {"student_id": student_id, "name": name}
-                    )
+                    results.append({"student_id": student_id, "name": name})
 
         for child in node.get("children", []):
             self._find_students_recursive(child, results)
@@ -322,10 +310,7 @@ class ArborApiClient:
             return None
 
         attrs = node.get("attributes", {})
-        if (
-            node.get("name") == "page-toggle"
-            and attrs.get("label") == "Academic year"
-        ):
+        if node.get("name") == "page-toggle" and attrs.get("label") == "Academic year":
             for child in node.get("children", []):
                 child_attrs = child.get("attributes", {})
                 if child_attrs.get("selected") == "1":
@@ -379,9 +364,7 @@ class ArborApiClient:
 
             elif "Positive" in title:
                 result["positive_this_term"] = kpi_data.get("measureRawValue")
-                result["positive_last_term"] = kpi_data.get(
-                    "comparisonRawValue"
-                )
+                result["positive_last_term"] = kpi_data.get("comparisonRawValue")
                 # Parse year total from measureShortLabel
                 year_total = self._extract_year_total(
                     kpi_data.get("measureShortLabel", "")
@@ -390,9 +373,7 @@ class ArborApiClient:
 
             elif "Negative" in title:
                 result["negative_this_term"] = kpi_data.get("measureRawValue")
-                result["negative_last_term"] = kpi_data.get(
-                    "comparisonRawValue"
-                )
+                result["negative_last_term"] = kpi_data.get("comparisonRawValue")
                 year_total = self._extract_year_total(
                     kpi_data.get("measureShortLabel", "")
                 )
@@ -474,9 +455,7 @@ class ArborApiClient:
         )
         return self._parse_assignment_list(data)
 
-    def _parse_assignment_list(
-        self, data: dict
-    ) -> list[dict[str, str]]:
+    def _parse_assignment_list(self, data: dict) -> list[dict[str, str]]:
         """Parse the page widget tree to extract assignment details."""
         assignments: list[dict[str, str]] = []
         self._find_assignments_recursive(data, assignments)
@@ -587,8 +566,6 @@ class ArborApiClient:
         )
         year_id = self.parse_academic_year_id(data)
         if not year_id:
-            _LOGGER.warning(
-                "Could not discover academic year ID, defaulting to '24'"
-            )
+            _LOGGER.warning("Could not discover academic year ID, defaulting to '24'")
             return "24"
         return year_id

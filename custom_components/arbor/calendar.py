@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any
+from datetime import datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
@@ -26,9 +25,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Arbor calendar entities from a config entry."""
-    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: ArborDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities: list[CalendarEntity] = []
 
@@ -71,9 +68,7 @@ class ArborCalendarEntity(
             "name": f"Arbor - {student_name}",
             "manufacturer": "Arbor Education",
             "model": "Parent Portal",
-            "configuration_url": (
-                f"https://{coordinator.client.school_domain}"
-            ),
+            "configuration_url": (f"https://{coordinator.client.school_domain}"),
         }
 
     @property

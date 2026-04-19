@@ -1,0 +1,45 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = [
+  ".remember",
+  "docs",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "UP",   # pyupgrade
+  "B",    # flake8-bugbear
+  "SIM",  # flake8-simplify
+  "RUF",  # ruff-specific
+]
+ignore = [
+  "E501",   # line length handled by formatter
+  "B008",   # function calls in defaults (used by voluptuous schemas)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["SIM", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.arbor"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.bandit]
+exclude_dirs = ["scripts", ".remember", "docs"]
+skips = [
+  "B101",  # assert_used — not a concern in integration code
+  # B105 fires on any string literal whose variable name contains "token" /
+  # "password". In this integration those literals are OAuth URL paths
+  # (e.g. "/oauth/token") and Home Assistant config-entry keys (e.g.
+  # "access_token", "refresh_token") — not hardcoded secrets.
+  "B105",
+]

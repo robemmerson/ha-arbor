@@ -1,5 +1,9 @@
 # Arbor School Integration for Home Assistant
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://hacs.xyz/)
+[![Validate](https://github.com/robemmerson/ha-arbor/actions/workflows/validate.yml/badge.svg)](https://github.com/robemmerson/ha-arbor/actions/workflows/validate.yml)
+[![CodeQL](https://github.com/robemmerson/ha-arbor/actions/workflows/codeql.yml/badge.svg)](https://github.com/robemmerson/ha-arbor/actions/workflows/codeql.yml)
+
 A custom Home Assistant integration for the [Arbor](https://arbor.sc) school management system. Surfaces your children's attendance, behaviour points, assignments, and daily timetable as native HA entities.
 
 ## Features
