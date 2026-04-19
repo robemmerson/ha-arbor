@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "package-name": "ha-arbor",
+      "changelog-path": "CHANGELOG.md",
+      "include-v-in-tag": true,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "custom_components/arbor/manifest.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  },
+  "bootstrap-sha": "a9e300512e01e338b00e2b6870ffcb7cb86b062a",
+  "plugins": []
+}

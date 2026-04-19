@@ -14,3 +14,5 @@ venv/
 *.swp
 *.swo
 CLAUDE.md
+.remember/
+.venv-ci/
