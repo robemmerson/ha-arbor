@@ -60,7 +60,7 @@ jobs:
           PY
 
       - name: Run pip-audit
-        uses: pypa/gh-action-pip-audit@bf94391136d3a8e8040a7485c2456159ad2caaaf # v1.1.0
+        uses: pypa/gh-action-pip-audit@cacd3dd45fe3a9a642879295a26765cdf4f1162d # v1.1.0
         with:
           inputs: ci-requirements.txt
 
