@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.2
 
       - name: Run hassfest
-        uses: home-assistant/actions/hassfest@f6f29a7ee3fa0eccadf3620a7b9ee00ab54ec03b # master (2026-04-19)
+        uses: home-assistant/actions/hassfest@868e6cb4607727d764341a158d98872cd63fa658 # master (2026-04-19)
 
   hacs:
     name: hacs
