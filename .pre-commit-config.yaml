@@ -20,3 +20,15 @@ repos:
     rev: v8.21.2
     hooks:
       - id: gitleaks
+
+  - repo: local
+    hooks:
+      # Offline half of the check: SHA-pinned, labelled, and the label is a
+      # plausible ref. The security workflow runs the same script without
+      # --offline to confirm each label against the upstream repo.
+      - id: check-action-pins
+        name: check action pins are SHA-pinned and labelled
+        entry: python scripts/check_action_pins.py --offline
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false

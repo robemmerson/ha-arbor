@@ -73,7 +73,16 @@ All workflows share these security properties:
   to `contents: read`. Write permissions only where strictly needed.
 - **SHA pinning:** every third-party action is pinned to a commit SHA with
   the version as a trailing comment (Dependabot `github-actions` updates the
-  SHAs on a schedule).
+  SHAs on a schedule). The comment must be a bare tag or branch name and
+  nothing else — `# v7.0.0`, `# main` — because Dependabot maintains it by
+  substituting the old version string inside the comment. A comment carrying
+  extra text (`# v2 (2026-04-19)`) is never fully updated, and once a comment
+  has drifted the substitution has nothing to match and corrupts it instead:
+  a stale `# v4.1.4` on a 4.4.1 pin came back as `# v5.0.0.1.5.0.0` when
+  bumped to 5.0.0. `scripts/check_action_pins.py` enforces both halves — the
+  pin is a full SHA, and the label names the tag that SHA actually is. It
+  runs offline in pre-commit and against the GitHub API in the `action-pins`
+  job of `security.yml`; `--fix` rewrites wrong labels from upstream.
 - **Concurrency:** each workflow cancels in-progress runs on the same ref so
   we don't waste minutes on rapid pushes.
 - **Triggers:** `push` to main, `pull_request`, and a weekly `schedule` cron
