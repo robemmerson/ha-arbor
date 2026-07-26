@@ -184,6 +184,25 @@ class Resolver:
         # Prefer the most specific tag: v7.0.0 over v7.
         return max(exact, key=len)
 
+    def default_branch(self, repo: str) -> str | None:
+        info = self._get(f"{API}/repos/{repo}")
+        return info["default_branch"] if info else None
+
+    def correct_label(self, repo: str, sha: str) -> str | None:
+        """The label this SHA should carry: its tag, else the branch it's on.
+
+        Some actions publish no tag Dependabot can resolve, so it tracks the
+        default branch and bumps the SHA in place. Those pins are branch-
+        labelled by design -- a version label on one is always a lie.
+        """
+        tag = self.tag_for_sha(repo, sha)
+        if tag:
+            return tag
+        branch = self.default_branch(repo)
+        if branch and self.branch_contains(repo, branch, sha):
+            return branch
+        return None
+
 
 def verify(pins: list[Pin], resolver: Resolver) -> tuple[list[str], dict[Pin, str]]:
     """Check each label against the API. Returns errors and suggested fixes."""
@@ -195,7 +214,7 @@ def verify(pins: list[Pin], resolver: Resolver) -> tuple[list[str], dict[Pin, st
 
         if pin.label is None:
             # Already reported by find_pins; still offer the correct label.
-            actual = resolver.tag_for_sha(pin.repo, pin.sha)
+            actual = resolver.correct_label(pin.repo, pin.sha)
             if actual:
                 fixes[pin] = actual
             continue
@@ -204,7 +223,7 @@ def verify(pins: list[Pin], resolver: Resolver) -> tuple[list[str], dict[Pin, st
         if tag_sha is not None:
             if tag_sha == pin.sha:
                 continue
-            actual = resolver.tag_for_sha(pin.repo, pin.sha)
+            actual = resolver.correct_label(pin.repo, pin.sha)
             hint = f" (this SHA is {actual})" if actual else ""
             errors.append(
                 f"{where}: {pin.action} is labelled '# {pin.label}', but that "
@@ -229,9 +248,10 @@ def verify(pins: list[Pin], resolver: Resolver) -> tuple[list[str], dict[Pin, st
                 f"{where}: {pin.action} label '# {pin.label}' matches no tag or "
                 f"branch in {pin.repo}."
             )
-        actual = resolver.tag_for_sha(pin.repo, pin.sha)
+        actual = resolver.correct_label(pin.repo, pin.sha)
         if actual:
             fixes[pin] = actual
+            errors[-1] += f" This SHA is {actual}."
 
     return errors, fixes
 

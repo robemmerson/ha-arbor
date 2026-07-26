@@ -60,7 +60,7 @@ jobs:
           PY
 
       - name: Run pip-audit
-        uses: pypa/gh-action-pip-audit@fb241f581674a1bb995061d62504857a9ea4b69e  # v1
+        uses: pypa/gh-action-pip-audit@fb241f581674a1bb995061d62504857a9ea4b69e  # main
         with:
           inputs: ci-requirements.txt
 
@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@961680e5305a30eb575f3ddf6bb6b2e265b68f0a  # v2
+        uses: gitleaks/gitleaks-action@961680e5305a30eb575f3ddf6bb6b2e265b68f0a  # master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
