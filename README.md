@@ -28,8 +28,24 @@ A custom Home Assistant integration for the [Arbor](https://arbor.sc) school man
 | Assignments Submitted List | Sensor | Full list of submitted assignments (in attributes) |
 | Timetable | Sensor | Today's lesson count with full schedule in attributes |
 | School Timetable | Calendar | Native HA calendar entity with lessons as events |
+| Clubs | Sensor | Count of clubs the child is registered for (list in attributes) |
+| Clubs Available | Sensor | Count of clubs the child can register for (list in attributes) |
 
-All entities are grouped under a device per child (e.g. "Arbor - Lauren Emmerson").
+**Per school account:**
+
+| Entity | Type | Description |
+|--------|------|-------------|
+| Latest School Message | Sensor | When the newest school message arrived; subject, preview and the 10 most recent messages in attributes |
+
+Child entities are grouped under a device per child (e.g. "Arbor - Lauren Emmerson"); the messages sensor sits on a school device (e.g. "Arbor - Example School").
+
+If Arbor can't be reached for part of a poll, sensors keep their last known values (today's timetable is cleared rather than showing a previous day). If every request in a poll fails, entities become unavailable until the next successful poll.
+
+### School message events
+
+Each new school message fires an `arbor_school_message` event with `id`, `subject`, `preview`, `received`, `sent_by`, `body`, `school_domain` and `config_entry_id`. Messages already present when Home Assistant starts are not announced. At most 5 are announced per poll, oldest first; any extras follow on the next polls.
+
+> Club parsing is based on the page layout for a child with no clubs. If the club lists look wrong for your child, please open an issue.
 
 ## Installation
 
@@ -55,14 +71,25 @@ All entities are grouped under a device per child (e.g. "Arbor - Lauren Emmerson
 
 ## How It Works
 
-The integration authenticates via Arbor's OAuth2 flow (the same one used by the Arbor parent mobile app), then polls for updated data every 15 minutes. Tokens are refreshed automatically before they expire. If a refresh token becomes invalid, the integration will attempt a full re-authentication using your stored credentials.
+The integration authenticates via Arbor's OAuth2 flow (the same one used by the Arbor parent mobile app), then polls for updated data every 15 minutes. Tokens are refreshed automatically before they expire. If a refresh token becomes invalid, the integration will attempt a full re-authentication using your stored credentials. If your password has changed, Home Assistant shows a **Re-authenticate** prompt so you can enter the new one without removing the integration.
+
+The current academic year is re-checked once a day, so assignment sensors follow the September rollover automatically. Children linked to your account are re-discovered whenever the integration loads; a child who is no longer on the account can be deleted from their device page.
 
 ### Polling Intervals
 
-- **Sensors** (KPIs, assignments, timetable): Every 15 minutes
+- **Sensors** (KPIs, assignments, timetable): Every 15 minutes by default
 - **Calendar** (when viewing date ranges): On demand
 
-You can adjust the default polling interval in `const.py` by changing `DEFAULT_SCAN_INTERVAL`.
+To change the polling interval (5–240 minutes), go to **Settings** → **Devices & Services** → **Arbor School** → **Configure**.
+
+## Development
+
+```bash
+pip install pytest-homeassistant-custom-component
+python3 -m pytest
+```
+
+`scripts/test_api.py` exercises the API client against a live account. `scripts/discover_endpoints.py` crawls the guardian pages reachable from the dashboard (GET only) to find endpoints for features not yet supported; output goes to the gitignored `scripts/arbor-discovery/`.
 
 ## Dashboard Examples
 
@@ -114,6 +141,21 @@ automation:
           message: >
             {{ state_attr('sensor.arbor_lauren_emmerson_assignments_overdue_list', 'assignments')
                | map(attribute='title') | join(', ') }}
+```
+
+### Automation: notify on new school messages
+
+```yaml
+automation:
+  - alias: "Notify new school message"
+    trigger:
+      - platform: event
+        event_type: arbor_school_message
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "{{ trigger.event.data.subject }}"
+          message: "{{ trigger.event.data.body or trigger.event.data.preview }}"
 ```
 
 ## Privacy

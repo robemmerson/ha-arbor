@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 from .api import ArborApiError
 from .const import DATA_CALENDAR, DOMAIN
 from .coordinator import ArborDataUpdateCoordinator
+from .util import parse_school_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,8 +87,8 @@ class ArborCalendarEntity(
         now = dt_util.now()
 
         for lesson in lessons:
-            start = self._parse_datetime(lesson.get("start", ""))
-            end = self._parse_datetime(lesson.get("end", ""))
+            start = parse_school_datetime(lesson.get("start", ""))
+            end = parse_school_datetime(lesson.get("end", ""))
             if start and end and end > now:
                 return CalendarEvent(
                     summary=lesson.get("subject", ""),
@@ -125,8 +126,8 @@ class ArborCalendarEntity(
                 lessons = []
 
             for lesson in lessons:
-                start_dt = self._parse_datetime(lesson.get("start", ""))
-                end_dt = self._parse_datetime(lesson.get("end", ""))
+                start_dt = parse_school_datetime(lesson.get("start", ""))
+                end_dt = parse_school_datetime(lesson.get("end", ""))
                 if start_dt and end_dt:
                     events.append(
                         CalendarEvent(
@@ -141,16 +142,3 @@ class ArborCalendarEntity(
             current += timedelta(days=1)
 
         return events
-
-    @staticmethod
-    def _parse_datetime(dt_str: str) -> datetime | None:
-        """Parse a datetime string from the API as local school time."""
-        if not dt_str:
-            return None
-        try:
-            parsed = datetime.fromisoformat(dt_str)
-        except ValueError:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
-        return parsed

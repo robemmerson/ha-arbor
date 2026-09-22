@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import re
 import secrets
 import time
-from datetime import date
+from collections.abc import Iterator
+from datetime import date, datetime
 from typing import Any
 
 import aiohttp
@@ -557,15 +559,177 @@ class ArborApiClient:
             )
         return lessons
 
+    # ── Clubs ─────────────────────────────────────────────────
+
+    async def get_clubs(self, student_id: str) -> dict[str, list[dict[str, str]]]:
+        """Fetch the clubs a student is registered for and can register for."""
+        data = await self._get(f"/guardians/club-ui/dashboard/student-id/{student_id}")
+        return self._parse_clubs(data)
+
+    @classmethod
+    def _parse_clubs(cls, data: dict) -> dict[str, list[dict[str, str]]]:
+        """Split the club dashboard sections into registered/available lists.
+
+        The page has one section titled "<name> is registered for these clubs"
+        and one titled "<name> Can be Registered For These Clubs". Rows are
+        parsed the same way as other Arbor property-row lists.
+        """
+        result: dict[str, list[dict[str, str]]] = {"registered": [], "available": []}
+        for section in cls._find_nodes(data, "section"):
+            title = _attrs(section).get("title", "").lower()
+            bucket = "available" if "can be registered" in title else "registered"
+            result[bucket].extend(cls._parse_section_rows(section))
+        return result
+
+    @classmethod
+    def _parse_section_rows(cls, section: dict) -> list[dict[str, str]]:
+        """Extract name/details/url from the direct children of a section."""
+        rows: list[dict[str, str]] = []
+        for child in section.get("children", []):
+            if not isinstance(child, dict):
+                continue
+            attrs = _attrs(child)
+            content = _child_content(child, "property-row-content")
+            if content is None:
+                content = child.get("content") or ""
+            name = (
+                cls._clean_text(content)
+                or attrs.get("value", "")
+                or attrs.get("title", "")
+                or attrs.get("label", "")
+            )
+            if not name:
+                continue
+            rows.append(
+                {
+                    "name": name,
+                    "details": cls._clean_text(attrs.get("description", "")),
+                    "url": _child_url(child) or attrs.get("url", ""),
+                }
+            )
+        return rows
+
+    # ── School messages ───────────────────────────────────────
+
+    async def get_school_messages(self) -> list[dict[str, str]]:
+        """Fetch the guardian's school messages, newest first."""
+        data = await self._get("/guardians/communication-center-ui/school-messages")
+        return self._parse_school_messages(data)
+
+    @classmethod
+    def _parse_school_messages(cls, data: dict) -> list[dict[str, str]]:
+        """Parse message rows into id/subject/preview/received dicts.
+
+        Each row's content is plain text: the subject and a truncated preview
+        separated by runs of whitespace. The description holds the received
+        time, e.g. "14 September 2026, 10:34" (with non-breaking spaces).
+        """
+        messages: list[dict[str, str]] = []
+        for row in cls._find_nodes(data, "property-row"):
+            match = re.search(r"/id/(\d+)", _child_url(row))
+            if not match:
+                continue
+            raw = html.unescape(_child_content(row, "property-row-content") or "")
+            parts = [p.strip() for p in re.split(r"\s{3,}", raw) if p.strip()]
+            messages.append(
+                {
+                    "id": match.group(1),
+                    "subject": parts[0] if parts else "",
+                    "preview": " ".join(parts[1:]),
+                    "received": cls._parse_arbor_datetime(
+                        _attrs(row).get("description", "")
+                    ),
+                }
+            )
+        return messages
+
+    async def get_school_message(self, message_id: str) -> dict[str, str]:
+        """Fetch one school message with its sender and full body."""
+        data = await self._get(
+            "/guardians/outbound-in-app-message-ui/view-outbound-in-app-message"
+            f"/id/{message_id}"
+        )
+        return self._parse_school_message(message_id, data)
+
+    @classmethod
+    def _parse_school_message(cls, message_id: str, data: dict) -> dict[str, str]:
+        """Parse the message slide-over (Subject/Received/Sent by + body)."""
+        fields = {
+            _attrs(row).get("label", ""): _attrs(row).get("value", "")
+            for row in cls._find_nodes(data, "property-row")
+        }
+        body = "\n\n".join(
+            html.unescape(node.get("content") or "").replace("\xa0", " ").strip()
+            for node in cls._find_nodes(data, "simple-text")
+        )
+        return {
+            "id": message_id,
+            "subject": fields.get("Subject") or _attrs(data).get("title", ""),
+            "received": cls._parse_arbor_datetime(fields.get("Received", "")),
+            "sent_by": fields.get("Sent by", ""),
+            "body": body,
+        }
+
+    @staticmethod
+    def _parse_arbor_datetime(text: str) -> str:
+        """Convert "14 September 2026, 10:34" into a naive ISO string."""
+        cleaned = " ".join(text.replace("\xa0", " ").split())
+        try:
+            return datetime.strptime(cleaned, "%d %B %Y, %H:%M").isoformat()
+        except ValueError:
+            return ""
+
+    # ── Widget tree helpers ───────────────────────────────────
+
+    @classmethod
+    def _find_nodes(cls, node: Any, name: str) -> Iterator[dict]:
+        """Yield every node in a widget tree with the given widget name."""
+        if not isinstance(node, dict):
+            return
+        if node.get("name") == name:
+            yield node
+        for child in node.get("children", []):
+            yield from cls._find_nodes(child, name)
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Strip tags and entities and collapse whitespace."""
+        return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text)).split())
+
     # ── Academic year discovery ────────────────────────────────
 
-    async def discover_academic_year_id(self, student_id: str) -> str:
-        """Discover the current academic year ID from the assignments page."""
+    async def discover_academic_year_id(self, student_id: str) -> str | None:
+        """Discover the current academic year ID from the assignments page.
+
+        Returns None when the page has no selected academic-year toggle, so
+        callers can decide whether to keep a previously stored value.
+        """
         data = await self._get(
             f"/guardians/student-ui/assignments-due/student-id/{student_id}"
         )
         year_id = self.parse_academic_year_id(data)
         if not year_id:
-            _LOGGER.warning("Could not discover academic year ID, defaulting to '24'")
-            return "24"
+            _LOGGER.warning("Could not discover academic year ID")
         return year_id
+
+
+def _attrs(node: dict) -> dict[str, Any]:
+    """Return a widget's attributes; Arbor sends [] instead of {} when empty."""
+    attrs = node.get("attributes")
+    return attrs if isinstance(attrs, dict) else {}
+
+
+def _child_content(node: dict, child_name: str) -> str | None:
+    """Return the content of the first direct child with the given name."""
+    for child in node.get("children", []):
+        if isinstance(child, dict) and child.get("name") == child_name:
+            return child.get("content") or ""
+    return None
+
+
+def _child_url(node: dict) -> str:
+    """Return the target URL of a row's event-listener child, if any."""
+    for child in node.get("children", []):
+        if isinstance(child, dict) and child.get("name") == "event-listener":
+            return _attrs(child).get("url", "")
+    return ""
