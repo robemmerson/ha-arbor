@@ -16,3 +16,5 @@ venv/
 CLAUDE.md
 .remember/
 .venv-ci/
+scripts/arbor-discovery/
+.coverage

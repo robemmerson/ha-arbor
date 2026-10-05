@@ -8,6 +8,22 @@
           "username": "Email Address",
           "password": "Password"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate with Arbor",
+        "description": "The saved credentials for {school} no longer work. Enter your current Arbor parent portal credentials.",
+        "data": {
+          "username": "Email Address",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Update Arbor credentials",
+        "description": "Enter the current Arbor parent portal credentials for {school}.",
+        "data": {
+          "username": "Email Address",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -17,7 +33,24 @@
       "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This school is already configured."
+      "already_configured": "This school is already configured. Its saved credentials have been updated.",
+      "reauth_successful": "Re-authentication was successful.",
+      "wrong_account": "These credentials belong to a different school than the one being re-authenticated.",
+      "reconfigure_successful": "The credentials were updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Arbor School Options",
+        "description": "Changes are applied immediately. Reloading also re-discovers the children linked to your account.",
+        "data": {
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch attendance, behaviour, assignments and timetable data from Arbor."
+        }
+      }
     }
   }
 }
